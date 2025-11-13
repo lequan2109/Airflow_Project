@@ -1,0 +1,54 @@
+services:
+  # ---------------- POSTGRES ----------------
+  postgres:
+    image: postgres:13
+    environment:
+      - POSTGRES_USER=airflow
+      - POSTGRES_PASSWORD=airflow
+      - POSTGRES_DB=airflow
+    volumes:
+      - ./pg_data:/var/lib/postgresql/data
+      - ./data:/opt/airflow/data # <-- Mount data cho Postgres cũng có thể truy cập nếu cần
+    ports:
+      - "5432:5432"
+
+  # ---------------- WEBSERVER ----------------
+  webserver:
+    build: .
+    restart: always
+    depends_on:
+      - postgres
+    user: "${AIRFLOW_UID}" # <-- SỬA LỖI: Thêm user để sửa lỗi permission
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./scripts:/opt/airflow/scripts
+      - ./spark_jobs:/opt/airflow/spark_jobs
+      - ./sql:/opt/airflow/sql
+      - ./data:/opt/airflow/data
+      - ./logs:/opt/airflow/logs
+    ports:
+      - "8080:8080"
+    command: webserver
+
+  # ---------------- SCHEDULER ----------------
+  scheduler:
+    build: .
+    restart: always
+    depends_on:
+      - postgres
+    user: "${AIRFLOW_UID}" # <-- SỬA LỖI: Thêm user để sửa lỗi permission
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./scripts:/opt/airflow/scripts
+      - ./spark_jobs:/opt/airflow/spark_jobs
+      - ./sql:/opt/airflow/sql
+      - ./data:/opt/airflow/data
+      - ./logs:/opt/airflow/logs
+    command: scheduler
